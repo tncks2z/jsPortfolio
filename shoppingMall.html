@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>수찬이의 집꾸미기몰</title>
+		<link
+			href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+			rel="stylesheet"
+			integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD"
+			crossorigin="anonymous" />
+		<link rel="stylesheet" href="/css/mall.css" />
+		<script
+			src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"
+			integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN"
+			crossorigin="anonymous"></script>
+		<script
+			src="https://code.jquery.com/jquery-3.6.4.js"
+			integrity="sha256-a9jBBRygX1Bh5lt8GZjXDzyOB+bWve9EiO7tROUtj/E="
+			crossorigin="anonymous"></script>
+	</head>
+	<body>
+		<div class="modal-bg" id="modal">
+			<div class="modal-content">
+				<form>
+					<div class="form-floating mb-3">
+						<input type="text" class="form-control" id="floatingName" placeholder="이름을 입력해주세요" />
+						<label for="floatingName">성함</label>
+					</div>
+					<div class="form-floating mb-3">
+						<input type="text" class="form-control" id="floatingAddress" placeholder="연락처를 입력해주세요" />
+						<label for="floatingAddress">연락처</label>
+					</div>
+					<div class="d-flex">
+						<button type="button" class="btn btn-dark me-3" id="submit">입력완료</button>
+						<button type="button" class="btn btn-dark" id="close">닫기</button>
+					</div>
+				</form>
+			</div>
+		</div>
+		<div class="bill-bg">
+			<div class="bill-content" id="bill">
+				<canvas id="canvas" width="400"></canvas>
+				<button type="button" class="btn btn-dark rounded-0" id="bill-close-btn">닫기</button>
+			</div>
+		</div>
+		<nav class="navbar navbar-expand bg-dark sticky-top z-3" data-bs-theme="dark">
+			<div class="container-fluid">
+				<a class="navbar-brand h1 m-1 me-3" href="#">집꾸미기</a>
+				<div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+					<div class="navbar-nav">
+						<a class="nav-link m-1 active" aria-current="page" href="#">Home</a>
+						<a class="nav-link m-1" href="#">스토어</a>
+						<a class="nav-link m-1" href="#">시공견적</a>
+					</div>
+				</div>
+			</div>
+		</nav>
+		<div class="bg-main">
+			<div class="product-container container pt-3 mb-3">
+				<div class="input-group mb-3">
+					<input
+						type="text"
+						class="form-control"
+						id="searchInput"
+						placeholder="검색어 입력"
+						aria-label="Recipient's username"
+						aria-describedby="findItem" />
+				</div>
+				<div class="product-list row g-5"></div>
+			</div>
+			<div class="cart-container container p-4 mb-3">
+				<h5 class="ms-2">장바구니</h5>
+				<div
+					class="cart d-flex justify-content-evenly align-items-center"
+					ondrop="dropItem(event)"
+					ondragover="allowDrop(event)">
+				</div>
+			</div>
+			<div class="container">
+				<h5>최종가격</h5>
+				<p id="totalPrice">합계 : </p>
+				<button type="button" class="btn btn-dark ms-0" id="buy-btn">구매하기</button>
+			</div>
+		</div>
+		<script>
+			localStorage.clear();
+			// ajax를 사용한 데이터 request
+			let products = [];
+			let productsCopy = [];
+			$.get('store.json').done((data) => {
+				makeProductCard(data.products);
+				products = data.products;
+				productsCopy = data.products;
+			});
+			// 데이터 형성 시  html 추가
+			function makeProductCard(array) {
+				array.forEach((product) => {
+					$('.product-list').append(
+						`
+						<div class="col-3">
+							<div class="card" id="item${product.id}" data-id="${product.id}" style="width: 18rem" draggable="true" ondragstart="dragItem(event)">
+									<img src="/img/${product.photo}" class="card-img-top" alt="..." draggable="false"/>
+									<div class="card-body">
+										<h5 class="card-title">${product.title}</h5>
+										<p class="f-grey">${product.brand}</p>
+										<p class="card-text">가격 : ${product.price}</p>
+										<button type="button" class="btn btn-dark item-add">담기</button>
+									</div>
+								</div>
+								<div class="card cart-item d-hide" id="cart-item${product.id}" data-id="${product.id}" style="width: 14rem;" draggable="false">
+									<img src="/img/${product.photo}" class="card-img-top" style="width: auto" alt="..." draggable="false" />
+									<div class="card-body text-center">
+										<h5 class="card-title" id="itemTitle">${product.title}</h5>
+										<p class="f-grey" id="itemBrand">${product.brand}</p>
+										<p class="card-text" id="itemPrice">${product.price}</p>
+										<input type="text" class="form-control" id="itemNumInput" placeholder="수량 입력" value="1" />
+									</div>
+								</div>
+							</div>
+						`
+					);
+				});
+			}
+			function makeCartList(dataId) {
+				$('#buy-btn').attr('disabled', false);
+				if ($('.cart').children(`#cart-item${dataId}`).length == 0) {
+					// 장바구니에 담는 값이 처음 넣는 값인 경우
+					$('h5').remove('.f-white');
+					$(`#cart-item${dataId}`).removeClass('d-hide');
+					$('.cart')[0].appendChild(document.getElementById(`cart-item${dataId}`));
+					itemNumList[dataId] = Number($('#itemNumInput').val());
+					priceList[dataId] = products[dataId].price;
+					getTotalPrice(priceList);
+				} else {
+					itemNumList[dataId]++;
+					priceList[dataId] = products[dataId].price * itemNumList[dataId];
+					$(`#cart-item${dataId}`).children().children('#itemNumInput').val(itemNumList[dataId]);
+					getTotalPrice(priceList);
+				}
+			}
+			// 영수증
+			function showBill(productArray) {
+				let cnt = 0;
+				for (let i = 0; i < products.length; i++) {
+					if (priceList[i] != null) {
+						cnt++;
+					}
+				}
+				let canvas = document.getElementById('canvas');
+				let canvasHeigth = (cnt + 1) * 200 + 100;
+				canvas.height = canvasHeigth;
+				let c = canvas.getContext('2d');
+				let today = new Date();
+				let year = today.getFullYear(); // 년도
+				let month = today.getMonth() + 1; // 월
+				let date = today.getDate(); // 날짜
+				let hours = today.getHours(); // 시
+				let minutes = today.getMinutes(); // 분
+				let seconds = today.getSeconds(); // 초
+				let row = 0;
+				let scaleY = 0;
+				c.font = 'normal bold 40px Arial, dotum';
+				c.fillText('영수증', 10, 100);
+				c.font = 'normal 17px Arial, dotum';
+				c.fillText('이름 : ' + localStorage.getItem('userName'), 10, 150);
+				c.fillText('연락처 : ' + localStorage.getItem('userAddress'), 10, 170);
+				c.fillText(year + '-' + month + '-' + date, 10, 190);
+				c.fillText(hours + ':' + minutes + ':' + seconds, 100, 190);
+				products.forEach(function (item, index) {
+					if (priceList[index] != null) {
+						scaleY = Number((row + 1) * 250);
+						c.fillText(products[index].title, 10, scaleY);
+						c.fillText(products[index].brand, 10, scaleY + 30);
+						c.fillText('가격 : ' + products[index].price, 10, scaleY + 60);
+						c.fillText('수량 : ' + itemNumList[index], 10, scaleY + 90);
+						c.fillText('합계 : ' + priceList[index], 10, scaleY + 120);
+						row = row + 0.8;
+					}
+				});
+				c.fillText('총 합계 : ' + totalPrice, 10, scaleY + 200);
+			}
+			$('#bill-close-btn').click(() => {
+				$('.bill-bg').removeClass('show-bill');
+			});
+			// input value 받아오기
+			let searchInput = '';
+			$('#searchInput').on('input', () => {
+				searchInput = $('#searchInput').val();
+				if (searchInput.length > 0) {
+					let itemSearched = productsCopy.filter((product) => {
+						return product.title.includes(searchInput);
+					});
+					$('.product-list').html('');
+					makeProductCard(itemSearched);
+				} else {
+					searchInput = '';
+					$('#searchInput').val('');
+					$('.product-list').html('');
+					makeProductCard(products);
+				}
+			});
+			// 장바구니 기능
+			if ($('.cart').children('.card').length == 0) {
+				$('.cart').append(`<h5 class="f-white">여기로 드래그</h5>`);
+			}
+			function allowDrop(e) {
+				e.preventDefault();
+			}
+			function dragItem(e) {
+				e.dataTransfer.setData('itemId', $(e.target).data('id'));
+			}
+			function dropItem(e) {
+				e.preventDefault();
+				let data = e.dataTransfer.getData('itemId');
+				makeCartList(data);
+			}
+			$(document).on('click', '.item-add', (e) => {
+				let itemId = $(e.target).parent().parent().data('id');
+				makeCartList(itemId);
+			});
+			let totalPrice = 0;
+			function getTotalPrice(priceList) {
+				totalPrice = priceList.reduce((a, b) => a + b);
+				$('#totalPrice').html('합계 : ' + totalPrice);
+			}
+			function updateLocalStorage(priceList, itemNumList, totalPrice) {
+				localStorage.setItem('priceList', JSON.stringify(priceList));
+				localStorage.setItem('itemNumList', JSON.stringify(itemNumList));
+				localStorage.setItem('totalPrice', JSON.stringify(totalPrice));
+			}
+			// 금액 계산
+			let priceList = [];
+			let itemNumList = [];
+			$(document).on('input', '#itemNumInput', (e) => {
+				let itemId = $(e.target).parent().parent().data('id');
+				let itemPrice = Number($(e.target).siblings('#itemPrice').text());
+				let itemNum = Number($(e.target).val());
+				if (itemNum == 0) {
+					itemNum = 1;
+				}
+				itemNumList[itemId] = itemNum;
+				let itemTotalPrice = itemPrice * itemNum;
+				priceList[itemId] = itemTotalPrice;
+				getTotalPrice(priceList);
+			});
+			// 구매하기
+			$('#buy-btn').click(function () {
+				$('#modal').addClass('show-modal');
+				updateLocalStorage(priceList, itemNumList, totalPrice);
+			});
+			$('#close').click(function () {
+				$('#modal').removeClass('show-modal');
+			});
+			$('.modal-bg').on('click', (e) => {
+				if (e.target == e.currentTarget) {
+					$('#modal').removeClass('show-modal');
+				}
+			});
+			if ($('.cart').children('div').length == 0) {
+				$('#buy-btn').attr('disabled', true);
+			}
+			// 사용자 정보 submit
+			$('#submit').click(function (e) {
+				let nameInput = $('#floatingName').val();
+				let addressInput = $('#floatingAddress').val();
+				if (nameInput == '') {
+					$('#floatingName').css('border-color', 'red');
+					$('#floatingName').focus();
+				} else if (addressInput == '') {
+					$('#floatingAddress').css('border-color', 'red');
+					$('#floatingAddress').focus();
+				} else {
+					localStorage.setItem('userName', nameInput);
+					localStorage.setItem('userAddress', addressInput);
+					showBill(products);
+					$('#modal').removeClass('show-modal');
+					$('.bill-bg').addClass('show-bill');
+				}
+			});
+		</script>
+	</body>
+</html>
